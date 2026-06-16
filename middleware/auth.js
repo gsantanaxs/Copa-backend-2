@@ -36,3 +36,17 @@ export const verificarAdmin = async (req, res, next) => {
     
     next()
 }
+
+export const usuarioEhAdmin = async (userId) => {
+    try {
+        const { data: perfil } = await supabase
+            .from('perfis')
+            .select('tipo')
+            .eq('id', userId)
+            .single()
+        
+        return perfil && perfil.tipo === 'admin'
+    } catch (error) {
+        return false
+    }
+}

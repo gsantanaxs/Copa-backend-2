@@ -37,6 +37,15 @@ app.use('/api/transportes', transportesRoutes)
 app.use('/api/restaurantes', restaurantesRoutes)
 app.use('/api/likes', likesRoutes)
 
+// Rota principal (boas-vindas)
+app.get('/', (req, res) => {
+    res.json({
+        message: 'Bem-vindo à API do Torcedor Guide!',
+        docs: '/api/',
+        status: 'online'
+    })
+})
+
 // Rota de health check
 app.get('/health', (req, res) => {
     res.json({ 

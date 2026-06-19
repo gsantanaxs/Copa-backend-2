@@ -46,12 +46,16 @@ router.get('/', [
 
     // Renomeado para "consulta" para não conflitar com a função `query`
     // importada do express-validator (bug original: shadowing).
+    //
+    // OBS: não usamos embed automático `usuarios!usuario_id (...)` aqui porque
+    // a FK de avaliacoes_estadios.usuario_id aponta para auth.users, e não
+    // existe (por padrão) uma FK declarada para public.usuarios. Sem essa FK,
+    // o PostgREST não consegue resolver o relacionamento e a query falha com
+    // "Could not find a relationship..." (erro 500), causando o "Failed to
+    // fetch" no front. Buscamos os dados do usuário em uma segunda consulta.
     let consulta = supabase
         .from('avaliacoes_estadios')
-        .select(`
-            *,
-            usuarios!usuario_id (id, nome, email)
-        `, { count: 'exact' })
+        .select('*', { count: 'exact' })
         .order('data_avaliacao', { ascending: false })
         .range(offset, offset + limit - 1)
 
@@ -74,8 +78,29 @@ router.get('/', [
         return res.status(500).json({ error: error.message })
     }
 
+    // Buscar dados básicos dos usuários donos das avaliações retornadas
+    // e anexar em cada item (substitui o embed automático).
+    const usuarioIds = [...new Set(data.map(item => item.usuario_id).filter(Boolean))]
+    let usuariosPorId = {}
+
+    if (usuarioIds.length > 0) {
+        const { data: usuariosData, error: usuariosError } = await supabase
+            .from('usuarios')
+            .select('id, nome, email')
+            .in('id', usuarioIds)
+
+        if (!usuariosError && usuariosData) {
+            usuariosPorId = Object.fromEntries(usuariosData.map(u => [u.id, u]))
+        }
+    }
+
+    const dataComUsuario = data.map(item => ({
+        ...item,
+        usuarios: usuariosPorId[item.usuario_id] || null
+    }))
+
     res.json({
-        data,
+        data: dataComUsuario,
         pagination: {
             page,
             limit,

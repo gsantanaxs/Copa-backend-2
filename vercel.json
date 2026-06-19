@@ -1,12 +1,4 @@
 {
-    "version": 2,
-    "name": "fifa2026-guide-backend",
-    "builds": [
-        {
-            "src": "server.js",
-            "use": "@vercel/node"
-        }
-    ],
     "rewrites": [
         {
             "source": "/(.*)",

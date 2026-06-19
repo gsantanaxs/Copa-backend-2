@@ -43,16 +43,25 @@ router.post('/registrar', [
         // Importante: se a confirmação de e-mail estiver ativa no projeto,
         // o signUp não retorna sessão, então o client anônimo não está
         // autenticado nesse momento e um insert protegido por RLS falharia.
+        //
+        // Usamos upsert (não insert) porque existe um trigger no banco
+        // (on_auth_user_created -> public.handle_new_user) que já cria essa
+        // linha automaticamente assim que o usuário é criado em auth.users.
+        // Sem upsert, esse insert chegaria depois do trigger e falharia com
+        // "duplicate key value violates unique constraint usuarios_pkey"
+        // mesmo o cadastro tendo dado certo. O upsert garante idempotência:
+        // se a linha já existe (criada pelo trigger), apenas atualiza nome;
+        // se não existe, cria normalmente.
         const { error: perfilError } = await supabaseAdmin
             .from('usuarios')
-            .insert([
+            .upsert([
                 {
                     id: authData.user.id,
                     email,
                     nome,
                     data_cadastro: new Date()
                 }
-            ])
+            ], { onConflict: 'id' })
 
         if (perfilError) throw perfilError
 
@@ -61,6 +70,7 @@ router.post('/registrar', [
             message: 'Usuário criado com sucesso',
             user: authData.user
         })
+
 
     } catch (error) {
         console.error('Erro no cadastro:', error)
